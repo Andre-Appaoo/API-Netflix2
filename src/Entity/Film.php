@@ -141,6 +141,7 @@ class Film
     private ?Plateforme $plateforme = null;
 
     #[ORM\ManyToMany(targetEntity: Acteur::class, inversedBy: 'films')]
+    #[ORM\JoinColumn(onDelete:"CASCADE")]
     #[Groups([
         'getFormat',
         'getGenre',
@@ -151,6 +152,7 @@ class Film
     private Collection $acteurs;
 
     #[ORM\ManyToMany(targetEntity: Format::class, inversedBy: 'films')]
+    #[ORM\JoinColumn(onDelete:"CASCADE")]
     #[Groups([
         'getActeur',
         'getGenre',
@@ -161,6 +163,7 @@ class Film
     private Collection $formats;
 
     #[ORM\ManyToMany(targetEntity: Genre::class, inversedBy: 'films')]
+    #[ORM\JoinColumn(onDelete:"CASCADE")]
     #[Groups([
         'getActeur',
         'getFormat',
@@ -171,6 +174,7 @@ class Film
     private Collection $genres;
 
     #[ORM\ManyToMany(targetEntity: Langue::class, inversedBy: 'films')]
+    #[ORM\JoinColumn(onDelete:"CASCADE")]
     #[Groups([
         'getActeur',
         'getFormat',
@@ -181,6 +185,7 @@ class Film
     private Collection $langues;
 
     #[ORM\ManyToMany(targetEntity: Realisateur::class, inversedBy: 'films')]
+    #[ORM\JoinColumn(onDelete:"CASCADE")]
     #[Groups([
         'getActeur',
         'getFormat',
