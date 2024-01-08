@@ -7,15 +7,19 @@ use App\Repository\FilmRepository;
 use App\Repository\GenreRepository;
 use App\Service\RessourceService;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Cache\InvalidArgumentException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 #[Route('/api/genres', name: 'api_')]
 class GenreController extends AbstractController
@@ -35,17 +39,32 @@ class GenreController extends AbstractController
 
     /**
      * @param Request $request
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('', name: 'genres', methods: ['GET'])]
-    public function getAllGenre(Request $request): JsonResponse
+    public function getAllGenre(Request $request, TagAwareCacheInterface $tagAwareCache): JsonResponse
     {
-        $allGenre = $this->genreRepository->findAllPaginated(
-            $request->get('page', 1),
-            $request->get('limit', 50)
-        );
+        $page = $request->get('page', 1);
+        $limit = $request->get('limit', 20);
 
-        return $this->json($allGenre, Response::HTTP_OK, [], [AbstractNormalizer::GROUPS => 'getGenres']);
+        $cacheId = "getAllGenre-$page-$limit";
+        return $tagAwareCache->get(
+            $cacheId,
+            function (ItemInterface $item) use ($page, $limit)
+            {
+                $item->tag('genresCache');
+                $item->expiresAfter(600);
+
+                return $this->json(
+                    $this->genreRepository->findAllPaginated($page, $limit),
+                    Response::HTTP_OK,
+                    [],
+                    [AbstractNormalizer::GROUPS => 'getGenres']
+                );
+            }
+        );
     }
 
     /**
@@ -60,12 +79,15 @@ class GenreController extends AbstractController
 
     /**
      * @param Genre $genre
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('/{id}', name: 'genreDelete', methods: ['DELETE'])]
-    /*#[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour effacer un genre')]*/
-    public function deleteGenre(Genre $genre): JsonResponse
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour effacer un genre')]
+    public function deleteGenre(Genre $genre, TagAwareCacheInterface $tagAwareCache): JsonResponse
     {
+        $tagAwareCache->invalidateTags(['genresCache']);
         $this->entityManager->remove($genre);
         $this->entityManager->flush();
 
@@ -77,15 +99,18 @@ class GenreController extends AbstractController
      * @param UrlGeneratorInterface $urlGenerator
      * @param ValidatorInterface $validator
      * @param FilmRepository $filmRepository
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('', name: 'genreCreate', methods: ['POST'])]
-    /*#[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour créer un genre')]*/
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour créer un genre')]
     public function createGenre(
         Request $request,
         UrlGeneratorInterface $urlGenerator,
         ValidatorInterface $validator,
-        FilmRepository $filmRepository
+        FilmRepository $filmRepository,
+        TagAwareCacheInterface $tagAwareCache
     ): JsonResponse
     {
         $newGenre = $this->serializer->deserialize($request->getContent(), Genre::class, 'json');
@@ -101,6 +126,7 @@ class GenreController extends AbstractController
             return new JsonResponse($this->serializer->serialize($errors, 'json'), Response::HTTP_BAD_REQUEST, [], true);
         }
 
+        $tagAwareCache->invalidateTags(['genresCache']);
         $this->entityManager->persist($newGenre);
         $this->entityManager->flush();
 
@@ -114,15 +140,18 @@ class GenreController extends AbstractController
      * @param Genre $genre
      * @param ValidatorInterface $validator
      * @param FilmRepository $filmRepository
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('/{id}', name: 'genreUpdate', methods: ['PUT'])]
-    /*#[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour modifier un genre')]*/
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour modifier un genre')]
     public function updateGenre(
         Request $request,
         Genre $genre,
         ValidatorInterface $validator,
-        FilmRepository $filmRepository
+        FilmRepository $filmRepository,
+        TagAwareCacheInterface $tagAwareCache
     ): JsonResponse
     {
         $updateGenre = $this->serializer->deserialize($request->getContent(), Genre::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $genre]);
@@ -138,6 +167,7 @@ class GenreController extends AbstractController
             return new JsonResponse($this->serializer->serialize($errors, 'json'), Response::HTTP_BAD_REQUEST, [], true);
         }
 
+        $tagAwareCache->invalidateTags(['genresCache']);
         $this->entityManager->persist($updateGenre);
         $this->entityManager->flush();
 

@@ -21,6 +21,15 @@ class FormatRepository extends ServiceEntityRepository
         parent::__construct($registry, Format::class);
     }
 
+    public function findAllPaginated($page, $limit): array
+    {
+        return $this->createQueryBuilder('f')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
 //    /**
 //     * @return Format[] Returns an array of Format objects
 //     */

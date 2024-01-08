@@ -15,6 +15,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[Groups(['getFilms'])]
 class Film
 {
+    /**
+     * @var int|null
+     */
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -28,6 +31,9 @@ class Film
     ])]
     private ?int $id = null;
 
+    /**
+     * @var string|null
+     */
     #[ORM\Column(length: 100)]
     #[Assert\NotBlank(message: "Veuillez renseigner le titre du film")]
     #[Assert\Length(
@@ -46,6 +52,9 @@ class Film
     ])]
     private ?string $titre = null;
 
+    /**
+     * @var string|null
+     */
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     #[Groups([
         'getActeur',
@@ -57,6 +66,9 @@ class Film
     ])]
     private ?string $synopsis = null;
 
+    /**
+     * @var string|null
+     */
     #[ORM\Column(length: 255, nullable: true)]
     #[Assert\NotBlank(message: "Veuillez renseigner l'url de l'illustration du film")]
     #[Assert\Url(
@@ -79,6 +91,9 @@ class Film
     ])]
     private ?string $illustration = null;
 
+    /**
+     * @var string|null
+     */
     #[ORM\Column(length: 4, nullable: true)]
     #[Assert\Length(
         max: 4,
@@ -94,6 +109,9 @@ class Film
     ])]
     private ?string $anneeSortie = null;
 
+    /**
+     * @var int|null
+     */
     #[ORM\Column(nullable: true)]
     #[Groups([
         'getActeur',
@@ -105,6 +123,9 @@ class Film
     ])]
     private ?int $duree = null;
 
+    /**
+     * @var string|null
+     */
     #[ORM\Column(length: 255, nullable: true)]
     #[Assert\NotBlank(message: "Veuillez renseigner une url du film vers la plateforme")]
     #[Assert\Url(
@@ -127,6 +148,9 @@ class Film
     ])]
     private ?string $url = null;
 
+    /**
+     * @var Plateforme|null
+     */
     #[ORM\ManyToOne(inversedBy: 'films')]
     #[ORM\JoinColumn(nullable: false)]
     #[ORM\JoinColumn(onDelete:"CASCADE")]
@@ -140,6 +164,9 @@ class Film
     ])]
     private ?Plateforme $plateforme = null;
 
+    /**
+     * @var Collection|ArrayCollection
+     */
     #[ORM\ManyToMany(targetEntity: Acteur::class, inversedBy: 'films')]
     #[ORM\JoinColumn(onDelete:"CASCADE")]
     #[Groups([
@@ -151,6 +178,9 @@ class Film
     ])]
     private Collection $acteurs;
 
+    /**
+     * @var Collection|ArrayCollection
+     */
     #[ORM\ManyToMany(targetEntity: Format::class, inversedBy: 'films')]
     #[ORM\JoinColumn(onDelete:"CASCADE")]
     #[Groups([
@@ -162,6 +192,9 @@ class Film
     ])]
     private Collection $formats;
 
+    /**
+     * @var Collection|ArrayCollection
+     */
     #[ORM\ManyToMany(targetEntity: Genre::class, inversedBy: 'films')]
     #[ORM\JoinColumn(onDelete:"CASCADE")]
     #[Groups([
@@ -173,6 +206,9 @@ class Film
     ])]
     private Collection $genres;
 
+    /**
+     * @var Collection|ArrayCollection
+     */
     #[ORM\ManyToMany(targetEntity: Langue::class, inversedBy: 'films')]
     #[ORM\JoinColumn(onDelete:"CASCADE")]
     #[Groups([
@@ -184,6 +220,9 @@ class Film
     ])]
     private Collection $langues;
 
+    /**
+     * @var Collection|ArrayCollection
+     */
     #[ORM\ManyToMany(targetEntity: Realisateur::class, inversedBy: 'films')]
     #[ORM\JoinColumn(onDelete:"CASCADE")]
     #[Groups([
@@ -195,6 +234,9 @@ class Film
     ])]
     private Collection $realisateurs;
 
+    /**
+     *
+     */
     public function __construct()
     {
         $this->acteurs = new ArrayCollection();
@@ -204,16 +246,26 @@ class Film
         $this->realisateurs = new ArrayCollection();
     }
 
+    /**
+     * @return int|null
+     */
     public function getId(): ?int
     {
         return $this->id;
     }
 
+    /**
+     * @return string|null
+     */
     public function getTitre(): ?string
     {
         return $this->titre;
     }
 
+    /**
+     * @param string $titre
+     * @return $this
+     */
     public function setTitre(string $titre): static
     {
         $this->titre = $titre;
@@ -221,11 +273,18 @@ class Film
         return $this;
     }
 
+    /**
+     * @return string|null
+     */
     public function getSynopsis(): ?string
     {
         return $this->synopsis;
     }
 
+    /**
+     * @param string|null $synopsis
+     * @return $this
+     */
     public function setSynopsis(?string $synopsis): static
     {
         $this->synopsis = $synopsis;
@@ -233,11 +292,18 @@ class Film
         return $this;
     }
 
+    /**
+     * @return string|null
+     */
     public function getIllustration(): ?string
     {
         return $this->illustration;
     }
 
+    /**
+     * @param string|null $illustration
+     * @return $this
+     */
     public function setIllustration(?string $illustration): static
     {
         $this->illustration = $illustration;
@@ -245,11 +311,18 @@ class Film
         return $this;
     }
 
+    /**
+     * @return string|null
+     */
     public function getAnneeSortie(): ?string
     {
         return $this->anneeSortie;
     }
 
+    /**
+     * @param string|null $anneeSortie
+     * @return $this
+     */
     public function setAnneeSortie(?string $anneeSortie): static
     {
         $this->anneeSortie = $anneeSortie;
@@ -257,11 +330,18 @@ class Film
         return $this;
     }
 
+    /**
+     * @return int|null
+     */
     public function getDuree(): ?int
     {
         return $this->duree;
     }
 
+    /**
+     * @param int|null $duree
+     * @return $this
+     */
     public function setDuree(?int $duree): static
     {
         $this->duree = $duree;
@@ -269,11 +349,18 @@ class Film
         return $this;
     }
 
+    /**
+     * @return string|null
+     */
     public function getUrl(): ?string
     {
         return $this->url;
     }
 
+    /**
+     * @param string|null $url
+     * @return $this
+     */
     public function setUrl(?string $url): static
     {
         $this->url = $url;
@@ -281,11 +368,18 @@ class Film
         return $this;
     }
 
+    /**
+     * @return Plateforme|null
+     */
     public function getPlateforme(): ?Plateforme
     {
         return $this->plateforme;
     }
 
+    /**
+     * @param Plateforme|null $plateforme
+     * @return $this
+     */
     public function setPlateforme(?Plateforme $plateforme): static
     {
         $this->plateforme = $plateforme;
@@ -301,6 +395,10 @@ class Film
         return $this->acteurs;
     }
 
+    /**
+     * @param Acteur $acteur
+     * @return $this
+     */
     public function addActeur(Acteur $acteur): static
     {
         if (!$this->acteurs->contains($acteur)) {
@@ -310,6 +408,10 @@ class Film
         return $this;
     }
 
+    /**
+     * @param Acteur $acteur
+     * @return $this
+     */
     public function removeActeur(Acteur $acteur): static
     {
         $this->acteurs->removeElement($acteur);
@@ -325,6 +427,10 @@ class Film
         return $this->formats;
     }
 
+    /**
+     * @param Format $format
+     * @return $this
+     */
     public function addFormat(Format $format): static
     {
         if (!$this->formats->contains($format)) {
@@ -334,6 +440,10 @@ class Film
         return $this;
     }
 
+    /**
+     * @param Format $format
+     * @return $this
+     */
     public function removeFormat(Format $format): static
     {
         $this->formats->removeElement($format);
@@ -349,6 +459,10 @@ class Film
         return $this->genres;
     }
 
+    /**
+     * @param Genre $genre
+     * @return $this
+     */
     public function addGenre(Genre $genre): static
     {
         if (!$this->genres->contains($genre)) {
@@ -358,6 +472,10 @@ class Film
         return $this;
     }
 
+    /**
+     * @param Genre $genre
+     * @return $this
+     */
     public function removeGenre(Genre $genre): static
     {
         $this->genres->removeElement($genre);
@@ -373,6 +491,10 @@ class Film
         return $this->langues;
     }
 
+    /**
+     * @param Langue $langue
+     * @return $this
+     */
     public function addLangue(Langue $langue): static
     {
         if (!$this->langues->contains($langue)) {
@@ -382,6 +504,10 @@ class Film
         return $this;
     }
 
+    /**
+     * @param Langue $langue
+     * @return $this
+     */
     public function removeLangue(Langue $langue): static
     {
         $this->langues->removeElement($langue);
@@ -397,6 +523,10 @@ class Film
         return $this->realisateurs;
     }
 
+    /**
+     * @param Realisateur $realisateur
+     * @return $this
+     */
     public function addRealisateur(Realisateur $realisateur): static
     {
         if (!$this->realisateurs->contains($realisateur)) {
@@ -406,6 +536,10 @@ class Film
         return $this;
     }
 
+    /**
+     * @param Realisateur $realisateur
+     * @return $this
+     */
     public function removeRealisateur(Realisateur $realisateur): static
     {
         $this->realisateurs->removeElement($realisateur);

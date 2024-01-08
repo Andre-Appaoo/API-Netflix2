@@ -7,15 +7,19 @@ use App\Repository\FilmRepository;
 use App\Repository\RealisateurRepository;
 use App\Service\RessourceService;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Cache\InvalidArgumentException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 #[Route('/api/realisateurs', name: 'api_')]
 class RealisateurController extends AbstractController
@@ -35,17 +39,33 @@ class RealisateurController extends AbstractController
 
     /**
      * @param Request $request
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('', name: 'realisateurs', methods: ['GET'])]
-    public function getAllRealisateur(Request $request): JsonResponse
+    public function getAllRealisateur(Request $request, TagAwareCacheInterface $tagAwareCache): JsonResponse
     {
-        $allRealisateur = $this->realisateurRepository->findAllPaginated(
-            $request->get('page', 1),
-            $request->get('limit', 50)
+        $page = $request->get('page', 1);
+        $limit = $request->get('limit', 20);
+
+        $cacheId = "getAllRealisateur-$page-$limit";
+        return $tagAwareCache->get(
+            $cacheId,
+            function (ItemInterface $item) use ($page, $limit)
+            {
+                $item->tag('realisateursCache');
+                $item->expiresAfter(600);
+
+                return $this->json(
+                    $this->realisateurRepository->findAllPaginated($page, $limit),
+                    Response::HTTP_OK,
+                    [],
+                    [AbstractNormalizer::GROUPS => 'getRealisateurs']
+                );
+            }
         );
 
-        return $this->json($allRealisateur, Response::HTTP_OK, [], [AbstractNormalizer::GROUPS => 'getRealisateurs']);
     }
 
     /**
@@ -60,12 +80,15 @@ class RealisateurController extends AbstractController
 
     /**
      * @param Realisateur $realisateur
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('/{id}', name: 'realisateurDelete', methods: ['DELETE'])]
-    /*#[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour effacer un réalisateur')]*/
-    public function deleteRealisateur(Realisateur $realisateur): JsonResponse
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour effacer un réalisateur')]
+    public function deleteRealisateur(Realisateur $realisateur, TagAwareCacheInterface $tagAwareCache): JsonResponse
     {
+        $tagAwareCache->invalidateTags(['realisateursCache']);
         $this->entityManager->remove($realisateur);
         $this->entityManager->flush();
 
@@ -77,15 +100,18 @@ class RealisateurController extends AbstractController
      * @param UrlGeneratorInterface $urlGenerator
      * @param ValidatorInterface $validator
      * @param FilmRepository $filmRepository
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('', name: 'realisateurCreate', methods: ['POST'])]
-    /*#[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour créer un réalisateur')]*/
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour créer un réalisateur')]
     public function createRealisateur(
         Request $request,
         UrlGeneratorInterface $urlGenerator,
         ValidatorInterface $validator,
-        FilmRepository $filmRepository
+        FilmRepository $filmRepository,
+        TagAwareCacheInterface $tagAwareCache
     ): JsonResponse
     {
         $newRealisateur = $this->serializer->deserialize($request->getContent(), Realisateur::class, 'json');
@@ -101,6 +127,7 @@ class RealisateurController extends AbstractController
             return new JsonResponse($this->serializer->serialize($errors, 'json'), Response::HTTP_BAD_REQUEST, [], true);
         }
 
+        $tagAwareCache->invalidateTags(['realisateursCache']);
         $this->entityManager->persist($newRealisateur);
         $this->entityManager->flush();
 
@@ -114,15 +141,18 @@ class RealisateurController extends AbstractController
      * @param Realisateur $realisateur
      * @param ValidatorInterface $validator
      * @param FilmRepository $filmRepository
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('/{id}', name: 'realisateurUpdate', methods: ['PUT'])]
-    /*#[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour modifier un réalisateur')]*/
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour modifier un réalisateur')]
     public function updateRealisateur(
         Request $request,
         Realisateur $realisateur,
         ValidatorInterface $validator,
-        FilmRepository $filmRepository
+        FilmRepository $filmRepository,
+        TagAwareCacheInterface $tagAwareCache
     ): JsonResponse
     {
         $updateRealisateur = $this->serializer->deserialize($request->getContent(), Realisateur::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $realisateur]);
@@ -138,6 +168,7 @@ class RealisateurController extends AbstractController
             return new JsonResponse($this->serializer->serialize($errors, 'json'), Response::HTTP_BAD_REQUEST, [], true);
         }
 
+        $tagAwareCache->invalidateTags(['realisateursCache']);
         $this->entityManager->persist($updateRealisateur);
         $this->entityManager->flush();
 

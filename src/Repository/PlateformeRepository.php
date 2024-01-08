@@ -21,6 +21,15 @@ class PlateformeRepository extends ServiceEntityRepository
         parent::__construct($registry, Plateforme::class);
     }
 
+    public function findAllPaginated($page, $limit): array
+    {
+        return $this->createQueryBuilder('p')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
 //    /**
 //     * @return Plateforme[] Returns an array of Plateforme objects
 //     */

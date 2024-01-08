@@ -21,6 +21,15 @@ class LangueRepository extends ServiceEntityRepository
         parent::__construct($registry, Langue::class);
     }
 
+    public function findAllPaginated($page, $limit): array
+    {
+        return $this->createQueryBuilder('l')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
+
 //    /**
 //     * @return Langue[] Returns an array of Langue objects
 //     */

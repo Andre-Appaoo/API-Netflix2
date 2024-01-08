@@ -14,6 +14,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[Groups(['getActeurs', 'getActeur'])]
 class Acteur
 {
+    /**
+     * @var int|null
+     */
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -27,6 +30,9 @@ class Acteur
     ])]
     private ?int $id = null;
 
+    /**
+     * @var string|null
+     */
     #[ORM\Column(length: 100, nullable: true)]
     #[Assert\NotBlank(message: "Veuillez renseigner le nom de l'acteur")]
     #[Assert\Length(
@@ -45,24 +51,40 @@ class Acteur
     ])]
     private ?string $nom = null;
 
+    /**
+     * @var Collection|ArrayCollection
+     */
     #[ORM\ManyToMany(targetEntity: Film::class, mappedBy: 'acteurs')]
     private Collection $films;
 
+    /**
+     *
+     */
     public function __construct()
     {
         $this->films = new ArrayCollection();
     }
 
+    /**
+     * @return int|null
+     */
     public function getId(): ?int
     {
         return $this->id;
     }
 
+    /**
+     * @return string|null
+     */
     public function getNom(): ?string
     {
         return $this->nom;
     }
 
+    /**
+     * @param string|null $nom
+     * @return $this
+     */
     public function setNom(?string $nom): static
     {
         $this->nom = $nom;
@@ -78,6 +100,10 @@ class Acteur
         return $this->films;
     }
 
+    /**
+     * @param Film $film
+     * @return $this
+     */
     public function addFilm(Film $film): static
     {
         if (!$this->films->contains($film)) {
@@ -88,6 +114,10 @@ class Acteur
         return $this;
     }
 
+    /**
+     * @param Film $film
+     * @return $this
+     */
     public function removeFilm(Film $film): static
     {
         if ($this->films->removeElement($film)) {

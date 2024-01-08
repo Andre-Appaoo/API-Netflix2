@@ -7,15 +7,19 @@ use App\Repository\FilmRepository;
 use App\Repository\LangueRepository;
 use App\Service\RessourceService;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Cache\InvalidArgumentException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 #[Route('/api/langues', name: 'api_')]
 class LangueController extends AbstractController
@@ -34,14 +38,33 @@ class LangueController extends AbstractController
     }
 
     /**
+     * @param Request $request
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('', name: 'langues', methods: ['GET'])]
-    public function getAllLangue(): JsonResponse
+    public function getAllLangue(Request $request, TagAwareCacheInterface $tagAwareCache): JsonResponse
     {
-        $allLangue = $this->langueRepository->findAll();
+        $page = $request->get('page', 1);
+        $limit = $request->get('limit', 20);
 
-        return $this->json($allLangue, Response::HTTP_OK, [], [AbstractNormalizer::GROUPS => 'getLangues']);
+        $cacheId = "getAllLangue-$page-$limit";
+        return $tagAwareCache->get(
+            $cacheId,
+            function (ItemInterface $item) use ($page, $limit)
+            {
+                $item->tag('languesCache');
+                $item->expiresAfter(600);
+
+                return $this->json(
+                    $this->langueRepository->findAllPaginated($page, $limit),
+                    Response::HTTP_OK,
+                    [],
+                    [AbstractNormalizer::GROUPS => 'getLangues']
+                );
+            }
+        );
     }
 
     /**
@@ -56,12 +79,15 @@ class LangueController extends AbstractController
 
     /**
      * @param Langue $langue
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('/{id}', name: 'langueDelete', methods: ['DELETE'])]
-    /*#[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour effacer une langue')]*/
-    public function deleteLangue(Langue $langue): JsonResponse
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour effacer une langue')]
+    public function deleteLangue(Langue $langue, TagAwareCacheInterface $tagAwareCache): JsonResponse
     {
+        $tagAwareCache->invalidateTags(['languesCache']);
         $this->entityManager->remove($langue);
         $this->entityManager->flush();
 
@@ -73,15 +99,18 @@ class LangueController extends AbstractController
      * @param UrlGeneratorInterface $urlGenerator
      * @param ValidatorInterface $validator
      * @param FilmRepository $filmRepository
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('', name: 'langueCreate', methods: ['POST'])]
-    /*#[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour créer une langue')]*/
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour créer une langue')]
     public function createLangue(
         Request $request,
         UrlGeneratorInterface $urlGenerator,
         ValidatorInterface $validator,
-        FilmRepository $filmRepository
+        FilmRepository $filmRepository,
+        TagAwareCacheInterface $tagAwareCache
     ): JsonResponse
     {
         $newLangue = $this->serializer->deserialize($request->getContent(), Langue::class, 'json');
@@ -97,6 +126,7 @@ class LangueController extends AbstractController
             return new JsonResponse($this->serializer->serialize($errors, 'json'), Response::HTTP_BAD_REQUEST, [], true);
         }
 
+        $tagAwareCache->invalidateTags(['languesCache']);
         $this->entityManager->persist($newLangue);
         $this->entityManager->flush();
 
@@ -110,15 +140,18 @@ class LangueController extends AbstractController
      * @param Langue $langue
      * @param ValidatorInterface $validator
      * @param FilmRepository $filmRepository
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('/{id}', name: 'langueUpdate', methods: ['PUT'])]
-    /*#[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour modifier une langue')]*/
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour modifier une langue')]
     public function updateLangue(
         Request $request,
         Langue $langue,
         ValidatorInterface $validator,
-        FilmRepository $filmRepository
+        FilmRepository $filmRepository,
+        TagAwareCacheInterface $tagAwareCache
     ): JsonResponse
     {
         $updateLangue = $this->serializer->deserialize($request->getContent(), Langue::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $langue]);
@@ -134,6 +167,7 @@ class LangueController extends AbstractController
             return new JsonResponse($this->serializer->serialize($errors, 'json'), Response::HTTP_BAD_REQUEST, [], true);
         }
 
+        $tagAwareCache->invalidateTags(['languesCache']);
         $this->entityManager->persist($updateLangue);
         $this->entityManager->flush();
 

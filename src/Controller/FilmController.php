@@ -12,15 +12,19 @@ use App\Repository\PlateformeRepository;
 use App\Repository\RealisateurRepository;
 use App\Service\RessourceService;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Cache\InvalidArgumentException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 #[Route('/api/films', name: 'api_')]
 class FilmController extends AbstractController
@@ -52,17 +56,32 @@ class FilmController extends AbstractController
 
     /**
      * @param Request $request
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('', name: 'films', methods: ['GET'])]
-    public function getAllFilm(Request $request): JsonResponse
+    public function getAllFilm(Request $request, TagAwareCacheInterface $tagAwareCache): JsonResponse
     {
-        $allFilm = $this->filmRepository->findAllPaginated(
-            $request->get('page', 1),
-            $request->get('limit', 50)
-        );
+        $page = $request->get('page', 1);
+        $limit = $request->get('limit', 20);
 
-        return $this->json($allFilm, Response::HTTP_OK, [], [AbstractNormalizer::GROUPS => 'getFilms']);
+        $cacheId = "getAllFilm-$page-$limit";
+        return $tagAwareCache->get(
+            $cacheId,
+            function (ItemInterface $item) use ($page, $limit)
+            {
+                $item->tag('filmsCache');
+                $item->expiresAfter(600);
+
+                return $this->json(
+                    $this->filmRepository->findAllPaginated($page, $limit),
+                    Response::HTTP_OK,
+                    [],
+                    [AbstractNormalizer::GROUPS => 'getFilms']
+                );
+            }
+        );
     }
 
     /**
@@ -77,12 +96,15 @@ class FilmController extends AbstractController
 
     /**
      * @param Film $film
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('/{id}', name: 'filmDelete', methods: ['DELETE'])]
-    /*#[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour effacer un film')]*/
-    public function deleteFilm(Film $film): JsonResponse
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour effacer un film')]
+    public function deleteFilm(Film $film, TagAwareCacheInterface $tagAwareCache): JsonResponse
     {
+        $tagAwareCache->invalidateTags(['filmsCache']);
         $this->entityManager->remove($film);
         $this->entityManager->flush();
 
@@ -93,14 +115,17 @@ class FilmController extends AbstractController
      * @param Request $request
      * @param UrlGeneratorInterface $urlGenerator
      * @param ValidatorInterface $validator
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('', name: 'filmCreate', methods: ['POST'])]
-    /*#[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour créer un film')]*/
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour créer un film')]
     public function createFilm(
         Request $request,
         UrlGeneratorInterface $urlGenerator,
-        ValidatorInterface $validator
+        ValidatorInterface $validator,
+        TagAwareCacheInterface $tagAwareCache
     ): JsonResponse
     {
         $newFilm = $this->serializer->deserialize($request->getContent(), Film::class, 'json');
@@ -124,6 +149,7 @@ class FilmController extends AbstractController
             return new JsonResponse($this->serializer->serialize($errors, 'json'), Response::HTTP_BAD_REQUEST, [], true);
         }
 
+        $tagAwareCache->invalidateTags(['filmsCache']);
         $this->entityManager->persist($newFilm);
         $this->entityManager->flush();
 
@@ -136,14 +162,17 @@ class FilmController extends AbstractController
      * @param Request $request
      * @param Film $film
      * @param ValidatorInterface $validator
+     * @param TagAwareCacheInterface $tagAwareCache
      * @return JsonResponse
+     * @throws InvalidArgumentException
      */
     #[Route('/{id}', name: 'acteurUpdate', methods: ['PUT'])]
-    /*#[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour modifier un film')]*/
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour modifier un film')]
     public function updateFilm(
         Request $request,
         Film $film,
-        ValidatorInterface $validator
+        ValidatorInterface $validator,
+        TagAwareCacheInterface $tagAwareCache
     ): JsonResponse
     {
         $updateFilm = $this->serializer->deserialize($request->getContent(), Film::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $film]);
@@ -168,10 +197,10 @@ class FilmController extends AbstractController
             return new JsonResponse($this->serializer->serialize($errors, 'json'), Response::HTTP_BAD_REQUEST, [], true);
         }
 
+        $tagAwareCache->invalidateTags(['filmsCache']);
         $this->entityManager->persist($updateFilm);
         $this->entityManager->flush();
 
         return $this->json(null, Response::HTTP_NO_CONTENT);
     }
 }
-git commit -m "Fini"

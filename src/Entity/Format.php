@@ -14,6 +14,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 #[Groups(['getFormats', 'getFormat'])]
 class Format
 {
+    /**
+     * @var int|null
+     */
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -27,6 +30,9 @@ class Format
     ])]
     private ?int $id = null;
 
+    /**
+     * @var string|null
+     */
     #[ORM\Column(length: 45, nullable: true)]
     #[Assert\NotBlank(message: "Veuillez renseigner l'intitulé du format")]
     #[Assert\Length(
@@ -45,24 +51,40 @@ class Format
     ])]
     private ?string $intitule = null;
 
+    /**
+     * @var Collection|ArrayCollection
+     */
     #[ORM\ManyToMany(targetEntity: Film::class, mappedBy: 'formats')]
     private Collection $films;
 
+    /**
+     *
+     */
     public function __construct()
     {
         $this->films = new ArrayCollection();
     }
 
+    /**
+     * @return int|null
+     */
     public function getId(): ?int
     {
         return $this->id;
     }
 
+    /**
+     * @return string|null
+     */
     public function getIntitule(): ?string
     {
         return $this->intitule;
     }
 
+    /**
+     * @param string|null $intitule
+     * @return $this
+     */
     public function setIntitule(?string $intitule): static
     {
         $this->intitule = $intitule;
@@ -78,6 +100,10 @@ class Format
         return $this->films;
     }
 
+    /**
+     * @param Film $film
+     * @return $this
+     */
     public function addFilm(Film $film): static
     {
         if (!$this->films->contains($film)) {
@@ -88,6 +114,10 @@ class Format
         return $this;
     }
 
+    /**
+     * @param Film $film
+     * @return $this
+     */
     public function removeFilm(Film $film): static
     {
         if ($this->films->removeElement($film)) {
